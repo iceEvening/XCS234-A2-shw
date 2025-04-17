@@ -59,6 +59,35 @@ class NatureQN(Linear):
         img_height, img_width, n_channels = state_shape
         num_actions = self.env.action_space.n
         ### START CODE HERE ###
+
+        state_history = self.config["hyper_params"]["state_history"]
+        input_size = n_channels * state_history
+
+        self.q_network = nn.Sequential(
+            nn.Conv2d(input_size, 32, kernel_size=8, stride=4, padding=2),
+            nn.ReLU(),
+            nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=0),
+            nn.ReLU(),
+            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=0),
+            nn.ReLU(),
+            nn.Flatten(),
+            nn.Linear(3136, 512),
+            nn.ReLU(),
+            nn.Linear(512, num_actions)
+        )
+        self.target_network = nn.Sequential(
+            nn.Conv2d(input_size, 32, kernel_size=8, stride=4, padding=2),
+            nn.ReLU(),
+            nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=0),
+            nn.ReLU(),
+            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=0),
+            nn.ReLU(),
+            nn.Flatten(),
+            nn.Linear(3136, 512),
+            nn.ReLU(),
+            nn.Linear(512, num_actions)
+        )
+        
         ### END CODE HERE ###
 
     ############################################################
@@ -89,6 +118,15 @@ class NatureQN(Linear):
         out = None
 
         ### START CODE HERE ###
+
+        state = state.permute(0, 3, 1, 2)
+        if network == "q_network":
+            out = self.q_network(state)
+        elif network == "target_network":
+            out = self.target_network(state)
+        else:
+            raise ValueError("Invalid network name.")
+        
         ### END CODE HERE ###
 
         return out

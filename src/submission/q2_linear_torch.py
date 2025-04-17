@@ -22,7 +22,7 @@ config = yaml.load(config_file, Loader=yaml.FullLoader)
 class Linear(DQN):
     """
     Implementation of a single fully connected layer with Pytorch to be utilized
-    in the DQN algorithm.
+    in the DQN algorithm.·
     """
 
     ############################################################
@@ -54,6 +54,13 @@ class Linear(DQN):
         img_height, img_width, n_channels = state_shape
         num_actions = self.env.action_space.n
         ### START CODE HERE ###
+
+        state_history = self.config["hyper_params"]["state_history"]
+        input_size = img_height * img_width * n_channels * state_history
+
+        self.q_network = torch.nn.Linear(input_size, num_actions)
+        self.target_network = torch.nn.Linear(input_size, num_actions)
+
         ### END CODE HERE ###
 
     ############################################################
@@ -85,6 +92,15 @@ class Linear(DQN):
         out = None
 
         ### START CODE HERE ###
+
+        state = torch.flatten(state, start_dim=1)
+        if network == "q_network":
+            out = self.q_network(state)
+        elif network == "target_network":
+            out = self.target_network(state)
+        else:
+            raise ValueError("Invalid network name.")
+        
         ### END CODE HERE ###
 
         return out
@@ -107,6 +123,9 @@ class Linear(DQN):
         """
 
         ### START CODE HERE ###
+
+        self.target_network.load_state_dict(self.q_network.state_dict())
+
         ### END CODE HERE ###
 
     ############################################################
@@ -164,6 +183,14 @@ class Linear(DQN):
         """
         gamma = self.config["hyper_params"]["gamma"]
         ### START CODE HERE ###
+
+        q_values_selected = q_values.gather(1, actions.long().unsqueeze(1)).squeeze(1)
+        next_max_q_values, _ = torch.max(target_q_values, dim=1)
+        done_mask = torch.bitwise_or(terminated_mask, truncated_mask)
+        q_samp = rewards + gamma * next_max_q_values * (~done_mask)
+        loss = torch.mean((q_samp - q_values_selected) ** 2)
+        return loss
+    
         ### END CODE HERE ###
 
     ############################################################
@@ -182,4 +209,8 @@ class Linear(DQN):
             What are the input to the optimizer's constructor?
         """
         ### START CODE HERE ###
+
+        lr_begin = self.config["hyper_params"]["lr_begin"]
+        self.optimizer = torch.optim.Adam(self.q_network.parameters(), lr=lr_begin)
+        
         ### END CODE HERE ###
